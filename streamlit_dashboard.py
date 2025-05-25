@@ -2,146 +2,126 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Configure page
+# Page configuration
 st.set_page_config(page_title="Financial & Supply Chain Dashboard", layout="wide")
 st.title("Interactive Inventory & Supply Chain Financial Dashboard")
 
-# --- Sidebar Inputs ---
-st.sidebar.header("User Inputs")
+# --- Sidebar Inputs & Scenario Descriptions ---
+st.sidebar.header("User Inputs & Scenarios")
 order_freq = st.sidebar.selectbox(
     "How often do you order?",
     ["Weekly", "Bi-weekly", "Monthly"],
-    help="Select your ordering cadence"
+    help="Reorder frequency: weekly replenishment lowers inventory; monthly increases it."
 )
 budget = st.sidebar.number_input(
     "What’s your annual budget for inventory (€)?",
     min_value=0.0,
     value=100000.0,
     step=1000.0,
-    format="%.2f"
+    format="%.2f",
+    help="Limits total inventory spend, controlling working capital tied up in stock."
 )
 demand_outlook = st.sidebar.selectbox(
     "Demand outlook",
     ["Pessimistic (-10%)", "Baseline (0%)", "Optimistic (+10%)"],
-    help="Choose a simple demand scenario"
+    help="Market scenario: scales Revenue & COGS by ±10%."
 )
 
-# --- Load Data ---
-DATA_PATH = "/mnt/data/Transformation_Model_Suite (1).xlsx"
-try:
-    df = pd.read_excel(DATA_PATH)
-    st.sidebar.success("Loaded financial dataset.")
-except Exception as e:
-    st.error(f"Failed to load data: {e}")
-    st.stop()
+# Scenario explanations
+st.subheader("What-If Scenario Descriptions")
+st.markdown("**How often do you order?**  
+- Weekly: frequent replenishment reduces average inventory (~-10%).  
+- Bi-weekly: standard replenishment, neutral effect.  
+- Monthly: less frequent replenishment increases inventory (~+10%).")
+st.markdown("**Annual budget for inventory:**  
+Sets the maximum amount you can invest in inventory, capping stock levels.")
+st.markdown("**Demand outlook:**  
+- Pessimistic (-10%): conservative forecast reduces sales and COGS.  
+- Baseline (0%): neutral, no change.  
+- Optimistic (+10%): growth forecast increases sales and COGS.")
 
-# Validate required columns
-required_cols = [
-    "Year", "Revenue", "COGS", "Current Assets", "Current Liabilities",
-    "Inventory", "Cash", "Accounts Receivable", "Net Income", "Total Assets"
-]
-missing = [col for col in required_cols if col not in df.columns]
-if missing:
-    st.error(f"Missing columns in data: {missing}")
-    st.stop()
+# --- Fixed Baseline Values for 2025 (via CAGR 2015–2023) ---
+baseline = {
+    'Revenue': 2245891597.48,
+    'COGS': 753400000.00,
+    'Current Assets': 1380508243.96,
+    'Current Liabilities': 776610441.78,
+    'Inventory': 418161077.55,
+    'Cash': 229873783.64,
+    'Accounts Receivable': 650803975.71,
+    'Net Income': 43895489.22,
+    'Total Assets': 2255221580.02
+}
 
-# --- Historical CAGR to 2023 ---
-hist = df[df["Year"] <= 2023].sort_values("Year")
-start_year = int(hist.iloc[0]["Year"])
-end_year = int(hist.iloc[-1]["Year"])
-duration = end_year - start_year
-cagr = {}
-for col in required_cols:
-    if col == "Year":
-        continue
-    start_val = hist.iloc[0][col]
-    end_val = hist.iloc[-1][col]
-    cagr[col] = (end_val / start_val) ** (1.0 / duration) - 1 if start_val > 0 else 0.0
+# --- Apply user adjustments ---
+out_map = {"Pessimistic (-10%)": 0.9, "Baseline (0%)": 1.0, "Optimistic (+10%)": 1.1}
+adj_revenue = baseline['Revenue'] * out_map[demand_outlook]
+adj_cogs    = baseline['COGS']    * out_map[demand_outlook]
+inv_base = baseline['Inventory']
+adj_inventory = min(inv_base, budget) * {'Weekly':0.9, 'Bi-weekly':1.0, 'Monthly':1.1}[order_freq]
 
-# Project baseline to 2025
-proj_year = 2025
-years_forward = proj_year - end_year
-base_proj = {col: hist.iloc[-1][col] * ((1 + cagr[col]) ** years_forward) for col in cagr}
-
-# Apply demand outlook adjustment
-outlook_factor = {
-    "Pessimistic (-10%)": 0.9,
-    "Baseline (0%)": 1.0,
-    "Optimistic (+10%)": 1.1
-}[demand_outlook]
-adj_revenue = base_proj["Revenue"] * outlook_factor
-adj_cogs = base_proj["COGS"] * outlook_factor
-
-# Inventory adjustment
-inv_base = base_proj["Inventory"]
-adj_inventory = min(inv_base, budget)
-freq_map = {"Weekly": 0.9, "Bi-weekly": 1.0, "Monthly": 1.1}
-adj_inventory *= freq_map[order_freq]
-
-# Recompute balance-sheet items
-adj_ca = base_proj["Cash"] + base_proj["Accounts Receivable"] + adj_inventory
-adj_cl = base_proj["Current Liabilities"]
+# --- Recompute balance-sheet items ---
+adj_ca    = baseline['Cash'] + baseline['Accounts Receivable'] + adj_inventory
+adj_cl    = baseline['Current Liabilities']
 adj_quick = adj_ca - adj_inventory
-adj_wc = adj_ca - adj_cl
-adj_ta = base_proj["Total Assets"]
-adj_ni = base_proj["Net Income"] * (adj_revenue / base_proj["Revenue"])
+adj_wc    = adj_ca - adj_cl
+adj_ta    = baseline['Total Assets']
+adj_ni    = baseline['Net Income'] * (adj_revenue / baseline['Revenue'])
 
-# Helper for ratios
+# --- Ratio computations ---
 def compute_ratios(ca, cl, inv, ni, rev, ta):
-    cr = ca / cl if cl else np.nan
-    qr = (ca - inv) / cl if cl else np.nan
+    cr  = ca / cl if cl else np.nan
+    qr  = (ca - inv) / cl if cl else np.nan
     wcr = (ca - cl) / ta if ta else np.nan
     npm = ni / rev if rev else np.nan
     return cr, qr, wcr, npm
 
 base_cr, base_qr, base_wcr, base_npm = compute_ratios(
-    base_proj["Current Assets"], base_proj["Current Liabilities"], base_proj["Inventory"],
-    base_proj["Net Income"], base_proj["Revenue"], base_proj["Total Assets"]
+    baseline['Current Assets'], baseline['Current Liabilities'], baseline['Inventory'],
+    baseline['Net Income'], baseline['Revenue'], baseline['Total Assets']
 )
 adj_cr, adj_qr, adj_wcr, adj_npm = compute_ratios(
     adj_ca, adj_cl, adj_inventory, adj_ni, adj_revenue, adj_ta
 )
 
-# Display 2025 metrics
-st.header("2025 Forecast: Base vs Adjusted")
-metrics_df = pd.DataFrame([
-    ("Revenue", base_proj["Revenue"], adj_revenue),
-    ("COGS", base_proj["COGS"], adj_cogs),
-    ("Inventory", base_proj["Inventory"], adj_inventory),
-    ("Current Assets", base_proj["Current Assets"], adj_ca),
-    ("Current Liabilities", base_proj["Current Liabilities"], adj_cl),
-    ("Working Capital", base_proj["Current Assets"] - base_proj["Current Liabilities"], adj_wc),
-    ("Quick Assets", base_proj["Current Assets"] - base_proj["Inventory"], adj_quick),
-    ("Total Assets", base_proj["Total Assets"], adj_ta),
-    ("Net Income", base_proj["Net Income"], adj_ni)
-], columns=["Metric", "Base", "Adjusted"]).set_index("Metric")
+# --- Display Baseline vs Adjusted Metrics ---
+st.header("2025 Forecast: Baseline vs Adjusted")
+metrics = [
+    ("Revenue", baseline['Revenue'], adj_revenue),
+    ("COGS", baseline['COGS'], adj_cogs),
+    ("Inventory", baseline['Inventory'], adj_inventory),
+    ("Current Assets", baseline['Current Assets'], adj_ca),
+    ("Current Liabilities", baseline['Current Liabilities'], adj_cl),
+    ("Working Capital", baseline['Current Assets'] - baseline['Current Liabilities'], adj_wc),
+    ("Quick Assets", baseline['Current Assets'] - baseline['Inventory'], adj_quick),
+    ("Total Assets", baseline['Total Assets'], adj_ta),
+    ("Net Income", baseline['Net Income'], adj_ni)
+]
+metrics_df = pd.DataFrame(metrics, columns=["Metric","Baseline","Adjusted"]).set_index("Metric")
 st.dataframe(metrics_df.style.format("{:.2f}"))
 
-# Display ratios
-ratios_df = pd.DataFrame([
-    ("Current Ratio", base_cr, adj_cr),
-    ("Quick Ratio", base_qr, adj_qr),
-    ("Working Capital Ratio", base_wcr, adj_wcr),
-    ("Net Profit Margin", base_npm, adj_npm)
-], columns=["Ratio", "Base", "Adjusted"]).set_index("Ratio")
+# --- Display Key Financial Ratios ---
 st.subheader("Key Financial Ratios")
+ratios_df = pd.DataFrame([
+    ("Current Ratio",       base_cr,  adj_cr),
+    ("Quick Ratio",         base_qr,  adj_qr),
+    ("Working Capital Ratio", base_wcr, adj_wcr),
+    ("Net Profit Margin",   base_npm, adj_npm)
+], columns=["Ratio","Baseline","Adjusted"]).set_index("Ratio")
 st.table(ratios_df.style.format("{:.2f}"))
 
-# Assumptions & Explanations
+# --- Explanations for Ratios ---
 st.markdown("---")
-st.subheader("Assumptions & Explanations")
-for item in [
-    "Base 2025 via CAGR through 2023.",
-    "Demand outlook: -10%/0%/+10%.",
-    "Inventory budget cap and freq adj: Weekly=-10%, Bi-weekly=0%, Monthly=+10%."
-]:
-    st.markdown(f"- {item}")
-
-assumptions_text = (
-    "**What do changes in ratios mean?**\n"
-    "- Current Ratio: higher ⇒ more liquidity; lower ⇒ potential strain.\n"
-    "- Quick Ratio: higher ⇒ meet immediate obligations; lower ⇒ risk if inventory illiquid.\n"
-    "- Working Capital Ratio: higher ⇒ buffer; lower ⇒ tight operations.\n"
-    "- Net Profit Margin: higher ⇒ efficiency; lower ⇒ margin pressure."
+st.subheader("What Changes in These Ratios Mean")
+st.markdown(
+    "**Current Ratio:**  ↑ more liquidity buffer; ↓ tighter short-term debt coverage."
 )
-st.markdown(assumptions_text)
+st.markdown(
+    "**Quick Ratio:**    ↑ stronger immediate liquidity; ↓ more reliance on inventory."
+)
+st.markdown(
+    "**Working Capital Ratio:**  ↑ greater operational cushion; ↓ potential cash flow strain."
+)
+st.markdown(
+    "**Net Profit Margin:**  ↑ higher profitability per € revenue; ↓ increased cost pressure."
+)
