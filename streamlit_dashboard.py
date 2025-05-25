@@ -43,22 +43,29 @@ demand_outlook = st.sidebar.selectbox(
     help="Market scenario: scales Revenue & COGS by ±10%."
 )
 
+# Scenario explanations
 st.subheader("What-If Scenario Descriptions")
 st.markdown(
-    """**How often do you order?**  
+    """
+**How often do you order?**  
 - Weekly: frequent replenishment reduces average inventory (~-10%).  
 - Bi-weekly: standard replenishment, neutral effect.  
-- Monthly: less frequent replenishment increases inventory (~+10%)."""
+- Monthly: less frequent replenishment increases inventory (~+10%).
+"""
 )
 st.markdown(
-    """**Annual budget for inventory:**  
-Sets the maximum amount you can invest in inventory, capping stock levels."""
+    """
+**Annual budget for inventory:**  
+Sets the maximum amount you can invest in inventory, capping stock levels.
+"""
 )
 st.markdown(
-    """**Demand outlook:**  
+    """
+**Demand outlook:**  
 - Pessimistic (-10%): conservative forecast reduces sales and COGS.  
 - Baseline (0%): neutral, no change.  
-- Optimistic (+10%): growth forecast increases sales and COGS."""
+- Optimistic (+10%): growth forecast increases sales and COGS.
+"""
 )
 
 # --- Apply user adjustments ---
