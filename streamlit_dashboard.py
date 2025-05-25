@@ -3,8 +3,6 @@ import pandas as pd
 import numpy as np
 
 # ==============================
-# Editable Baseline Values
-# ==============================
 # Update these fixed 2025 projections if needed
 baseline = {
     'Revenue': 2245891597.48,
