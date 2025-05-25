@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# ==============================
-# Update these fixed 2025 projections if needed
 baseline = {
     'Revenue': 2245891597.48,
     'COGS': 753400000.00,
