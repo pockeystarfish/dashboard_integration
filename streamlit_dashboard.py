@@ -2,6 +2,22 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+# ==============================
+# Editable Baseline Values
+# ==============================
+# Update the following dictionary with your fixed 2025 baseline projections
+baseline = {
+    'Revenue': 2245891597.48,
+    'COGS': 753400000.00,
+    'Current Assets': 1380508243.96,
+    'Current Liabilities': 776610441.78,
+    'Inventory': 418161077.55,
+    'Cash': 229873783.64,
+    'Accounts Receivable': 650803975.71,
+    'Net Income': 43895489.22,
+    'Total Assets': 2255221580.02
+}
+
 # Page configuration
 st.set_page_config(page_title="Financial & Supply Chain Dashboard", layout="wide")
 st.title("Interactive Inventory & Supply Chain Financial Dashboard")
@@ -27,36 +43,29 @@ demand_outlook = st.sidebar.selectbox(
     help="Market scenario: scales Revenue & COGS by ±10%."
 )
 
-# Scenario explanations
-st.subheader("What-If Scenario Descriptions")
-st.markdown("**How often do you order?**  
-- Weekly: frequent replenishment reduces average inventory (~-10%).  
-- Bi-weekly: standard replenishment, neutral effect.  
-- Monthly: less frequent replenishment increases inventory (~+10%).")
-st.markdown("**Annual budget for inventory:**  
-Sets the maximum amount you can invest in inventory, capping stock levels.")
-st.markdown("**Demand outlook:**  
-- Pessimistic (-10%): conservative forecast reduces sales and COGS.  
-- Baseline (0%): neutral, no change.  
-- Optimistic (+10%): growth forecast increases sales and COGS.")
-
-# --- Fixed Baseline Values for 2025 (via CAGR 2015–2023) ---
-baseline = {
-    'Revenue': 2245891597.48,
-    'COGS': 753400000.00,
-    'Current Assets': 1380508243.96,
-    'Current Liabilities': 776610441.78,
-    'Inventory': 418161077.55,
-    'Cash': 229873783.64,
-    'Accounts Receivable': 650803975.71,
-    'Net Income': 43895489.22,
-    'Total Assets': 2255221580.02
-}
+# Scenario explanations\ nst.subheader("What-If Scenario Descriptions")
+st.markdown(
+    "**How often do you order?**  
+    - Weekly: frequent replenishment reduces average inventory (~-10%).  
+    - Bi-weekly: standard replenishment, neutral effect.  
+    - Monthly: less frequent replenishment increases inventory (~+10%)."
+)
+st.markdown(
+    "**Annual budget for inventory:**  
+    Sets the maximum amount you can invest in inventory, capping stock levels."
+)
+st.markdown(
+    "**Demand outlook:**  
+    - Pessimistic (-10%): conservative forecast reduces sales and COGS.  
+    - Baseline (0%): neutral, no change.  
+    - Optimistic (+10%): growth forecast increases sales and COGS."
+)
 
 # --- Apply user adjustments ---
 out_map = {"Pessimistic (-10%)": 0.9, "Baseline (0%)": 1.0, "Optimistic (+10%)": 1.1}
 adj_revenue = baseline['Revenue'] * out_map[demand_outlook]
 adj_cogs    = baseline['COGS']    * out_map[demand_outlook]
+
 inv_base = baseline['Inventory']
 adj_inventory = min(inv_base, budget) * {'Weekly':0.9, 'Bi-weekly':1.0, 'Monthly':1.1}[order_freq]
 
