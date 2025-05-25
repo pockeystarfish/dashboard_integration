@@ -5,7 +5,7 @@ import numpy as np
 # ==============================
 # Editable Baseline Values
 # ==============================
-# Update the following dictionary with your fixed 2025 baseline projections
+# Update these fixed 2025 projections if needed
 baseline = {
     'Revenue': 2245891597.48,
     'COGS': 753400000.00,
@@ -43,22 +43,22 @@ demand_outlook = st.sidebar.selectbox(
     help="Market scenario: scales Revenue & COGS by ±10%."
 )
 
-# Scenario explanations\ nst.subheader("What-If Scenario Descriptions")
+st.subheader("What-If Scenario Descriptions")
 st.markdown(
-    "**How often do you order?**  
-    - Weekly: frequent replenishment reduces average inventory (~-10%).  
-    - Bi-weekly: standard replenishment, neutral effect.  
-    - Monthly: less frequent replenishment increases inventory (~+10%)."
+    """**How often do you order?**  
+- Weekly: frequent replenishment reduces average inventory (~-10%).  
+- Bi-weekly: standard replenishment, neutral effect.  
+- Monthly: less frequent replenishment increases inventory (~+10%)."""
 )
 st.markdown(
-    "**Annual budget for inventory:**  
-    Sets the maximum amount you can invest in inventory, capping stock levels."
+    """**Annual budget for inventory:**  
+Sets the maximum amount you can invest in inventory, capping stock levels."""
 )
 st.markdown(
-    "**Demand outlook:**  
-    - Pessimistic (-10%): conservative forecast reduces sales and COGS.  
-    - Baseline (0%): neutral, no change.  
-    - Optimistic (+10%): growth forecast increases sales and COGS."
+    """**Demand outlook:**  
+- Pessimistic (-10%): conservative forecast reduces sales and COGS.  
+- Baseline (0%): neutral, no change.  
+- Optimistic (+10%): growth forecast increases sales and COGS."""
 )
 
 # --- Apply user adjustments ---
